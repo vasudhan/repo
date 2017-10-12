@@ -1,0 +1,121 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "AWS CloudFormation Template to launch an RDS Instance.",
+
+  "Parameters" : {
+
+    "DBSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup::Id",
+      "Description" : "Select the database security group"
+    },
+
+    "SubnetA" : {
+      "Type" : "AWS::EC2::Subnet::Id",
+      "Description" : "The SubnetID in one AvailabilityZone"
+    },
+    
+    "SubnetB" : {
+      "Type" : "AWS::EC2::Subnet::Id",
+      "Description" : "The SubnetID in other AvailabilityZone"
+    },
+
+    "DBInstanceIdentifier": {
+      "Default": "myDBInstance",
+      "Type" : "String",
+      "Description" : "Give a name to your RDS Instance"
+    },
+
+    "DBName": {
+      "Default": "MyDatabase",
+      "Description" : "The database name",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+
+    "DBUsername": {
+      "Default": "admin",
+      "Description" : "The database admin account username",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "16",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+    
+    "DBPassword": {
+      "Default": "password",
+      "NoEcho": "true",
+      "Description" : "The database admin account password",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "41",
+      "AllowedPattern" : "[a-zA-Z0-9]*",
+      "ConstraintDescription" : "must contain only alphanumeric characters."
+    },
+
+    "DBClass" : {
+      "Description" : "Database instance class",
+      "Type" : "String",
+      "AllowedValues" : ["db.m4.10xlarge", "db.m4.4xlarge", "db.m4.2xlarge", "db.m4.xlarge","db.m4.large", "db.m3.2xlarge", "db.m3.large", "db.m3.medium", "db.r3.8xlarge", "db.r3.4xlarge", "db.r3.2xlarge", "db.r3.xlarge", "db.r3.large", "db.t2.large", "db.t2.medium", "db.t2.small", "db.t2.micro"],
+      "ConstraintDescription" : "must select a valid database instance type."
+    },
+
+    "DBAllocatedStorage" : {
+      "Default": "5",
+      "Description" : "The size of the database (Gb)",
+      "Type": "Number",
+      "MinValue": "5",
+      "MaxValue": "1024",
+      "ConstraintDescription" : "must be between 5 and 1024Gb."
+    }
+  },
+
+  "Resources" : {
+
+    "MyDBSubnetGroup" : {
+      "Type" : "AWS::RDS::DBSubnetGroup",
+      "Properties" : {
+        "DBSubnetGroupDescription" : "Subnets available for the RDS DB Instance",
+        "SubnetIds" : [
+          {
+            "Ref": "SubnetA"
+          },
+          {
+            "Ref": "SubnetB"
+          }
+        ]
+      }
+    },
+    "MyDB" : {
+      "Type" : "AWS::RDS::DBInstance",
+      "Properties" : {
+        "DBName" : { "Ref" : "DBName" },
+        "AllocatedStorage" : { "Ref" : "DBAllocatedStorage" },
+        "DBInstanceClass" : { "Ref" : "DBClass" },
+        "Engine" : "MySQL",
+        "EngineVersion" : "5.6",
+        "DBInstanceIdentifier" : { "Ref" : "DBInstanceIdentifier" } ,
+        "MasterUsername" : { "Ref" : "DBUsername" } ,
+        "MasterUserPassword" : { "Ref" : "DBPassword" },
+        "DBSubnetGroupName" : { "Ref" : "MyDBSubnetGroup" },
+        "VPCSecurityGroups" : [ { "Ref" : "DBSecurityGroup" }  ]
+      }
+    }
+  },
+
+  "Outputs" : {
+    "JDBCConnectionString": {
+      "Description" : "JDBC connection string for database",
+      "Value" : { "Fn::Join": [ "", [ "jdbc:mysql://",
+                                      { "Fn::GetAtt": [ "MyDB", "Endpoint.Address" ] },
+                                      ":",
+                                      { "Fn::GetAtt": [ "MyDB", "Endpoint.Port" ] },
+                                      "/",
+                                      { "Ref": "DBName" }]]}
+    }
+  }
+}
